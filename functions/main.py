@@ -11,12 +11,12 @@ import yaml
 try:
     # Try relative imports first (when imported as module)
     from .make_configs import create_datamodule_config, create_model_config
-    from .bin_data import bin_make_train_val
+    from .bin_data import bin_make_train_val, readable_float
 except ImportError:
     # If relative imports fail, add parent directory to path and use absolute imports
     sys.path.insert(0, str(Path(__file__).parent.parent))
     from functions.make_configs import create_datamodule_config, create_model_config
-    from functions.bin_data import bin_make_train_val
+    from functions.bin_data import bin_make_train_val, readable_float
     _project_root = Path(__file__).parent.parent.parent
     from data_functions import stitch_data
 
@@ -67,7 +67,7 @@ def calculate_threshold(curr_channel_data):
     return threshold
 
 
-def extract_info_from_bin_file(bin_file):
+def make_dataset_str(bin_file, bin_size, sample_len, overlap):
     """Extract day, recording number, and well from bin file path and name"""
     bin_path = Path(bin_file)
     bin_name = bin_path.name
@@ -91,9 +91,9 @@ def extract_info_from_bin_file(bin_file):
         raise ValueError(f"Could not extract recording number from bin filename: {bin_name}")
     recording = rec_match.group(1)
     
-    filename = f'd{day}_r{recording}_w{well}'
+    dataset_str = f'd{day}_r{recording}_w{well}_b{readable_float(bin_size)}_sl{readable_float(sample_len)}_o{readable_float(overlap)}'
 
-    return filename
+    return dataset_str
 
 
 if __name__ == '__main__':
@@ -127,12 +127,12 @@ if __name__ == '__main__':
 
         #Prep output paths
         output_dir = Path.cwd()
-        filename = extract_info_from_bin_file(file)
-        os.makedirs(f'{output_dir}/lfads_other_files', exist_ok=True)
-        os.makedirs(f'{output_dir}/lfads_other_files/{filename}', exist_ok=True)
-        train_indices = f"{output_dir}/lfads_other_files/{filename}_indices/train_indices_{filename}.npy"
-        valid_indices = f"{output_dir}/lfads_other_files/{filename}_indices/valid_indices_{filename}.npy"
-        mat_file = f"{output_dir}/lfads_other_files/{filename}_indices/{filename}_raw_data.mat"
+        dataset_str = make_dataset_str(file, bin_size, sample_len, overlap)
+        os.makedirs(f'{output_dir}/other_files', exist_ok=True)
+        os.makedirs(f'{output_dir}/other_files/{dataset_str}', exist_ok=True)
+        train_indices = f"{output_dir}/other_files/{dataset_str}/train_indices_{dataset_str}.npy"
+        valid_indices = f"{output_dir}/other_files/{dataset_str}/valid_indices_{dataset_str}.npy"
+        mat_file = f"{output_dir}/other_files/{dataset_str}/{dataset_str}_raw_data.mat"
 
         # Load bin file
         data = np.memmap(file, dtype='float32', mode='r')

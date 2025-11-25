@@ -1,5 +1,8 @@
 import numpy as np
 
+def readable_float(float_string):
+    return str(float_string).replace('.','_')
+
 def validate_bin_data(binned_trials, spike_times_per_channel, num_channels, recording_duration, sample_len, bin_size, overlap):
     """
     Validate that bin_data was performed correctly.

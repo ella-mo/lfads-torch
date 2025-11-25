@@ -13,19 +13,16 @@ from scipy.io import savemat
 try:
     # Try relative imports first (when imported as module)
     from .make_configs import create_datamodule_config, create_model_config
-    from .bin_data import bin_make_train_val
+    from .bin_data import bin_make_train_val, readable_float
 except ImportError:
     # If relative imports fail, add parent directory to path and use absolute imports
     sys.path.insert(0, str(Path(__file__).parent.parent))
     from functions.make_configs import create_datamodule_config, create_model_config
-    from functions.bin_data import bin_make_train_val
+    from functions.bin_data import bin_make_train_val, readable_float
     _project_root = Path(__file__).parent.parent.parent
     if str(_project_root) not in sys.path:
         sys.path.insert(0, str(_project_root))
     from data_functions import stitch_data
-
-def readable_float(float_string):
-    return str(float_string).replace('.','_')
 
 def get_latest_lfads_output(runs_root: Path) -> Optional[Path]:
     """

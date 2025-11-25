@@ -45,17 +45,20 @@ mkdir -p logs
 cd "$LFADS_DIR"
 
 # preprocess all bin files and build configs
-python -m functions.main -b bin_files.csv -l "$LFADS_DIR" -c config.yaml
+python -m functions.main -b bin_files.csv -l "$LFADS_DIR" -c functions/config.yaml
 
 # grab the dataset IDs the Python step would have generated
 mapfile -t DATASETS < <(
   python - <<'PY'
 import pandas as pd
 from pathlib import Path
-from functions.main import extract_info_from_bin_file
+from functions.main import make_dataset_str
+import yaml
+with open("functions/config.yaml", "r") as f:
+    config = yaml.safe_load(f)
 paths = pd.read_csv("bin_files.csv")["path"]
 for p in paths:
-    print(extract_info_from_bin_file(Path(p)))
+    print(make_dataset_str(Path(p), config['make_data']['bin_size'], config['make_data']['sample_len'], config['make_data']['overlap']))
 PY
 )
 

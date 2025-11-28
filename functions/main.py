@@ -99,6 +99,5 @@ if __name__ == '__main__':
         
         # Get batch_size from config or use default
         batch_size = int(config['make_data'].get('batch_size', 32))
-        
         create_datamodule_config(args.lfads_dir, batch_size, dataset_str)
         create_model_config(args.lfads_dir, dataset_str, train_data)

@@ -1,4 +1,5 @@
 import numpy as np
+from typing import Optional, Callable
 
 # REAL DATA
 def extract_threshold_waveforms(signal, threshold, fs):
@@ -73,48 +74,54 @@ def calculate_threshold(curr_channel_data):
 
 
 #TOY DATA
-def inhomogeneous_poisson_sinusoidal(
-    duration: float,
+def lambda_t(
     max_rate: float,
     min_rate: float,
-    frequency: float,
-    phase: float = 0.0,
+    period: float,
+    start_sin_time: float,
+    end_sin_time: float,
+    phase: float = 0.0,) -> Callable[[float], float]:
+    # Sinusoid scaled to [min_rate, max_rate]
+    if max_rate <= 0:
+        raise ValueError("max_rate must be positive.")
+    if min_rate < 0 or min_rate > max_rate:
+        raise ValueError("min_rate must be in [0, max_rate].")
+    if period <= 0:
+        raise ValueError("period must be positive.")
+
+    return lambda t: np.where(
+        (t >= start_sin_time) & (t <= end_sin_time),
+        min_rate + (max_rate - min_rate) * 0.5 * (1 + np.sin(2 * np.pi * period * t + phase)),
+        min_rate
+    )
+
+def inhomogeneous_poisson_sinusoidal(
+    duration: float,
+    rate_f: Callable[[float], float],
+    max_rate: float,
     rng: Optional[np.random.Generator] = None,
 ) -> np.ndarray:
     """
-    Simulate an inhomogeneous Poisson process with sinusoidal rate via thinning.
+    Simulate an inhomogeneous Poisson process with sinusoidal rate via thinning and gating.
 
     Args:
         duration: Total simulation time (seconds).
-        max_rate: Maximum rate (Hz). Defines the rejection envelope.
-        min_rate: Minimum rate (Hz). Must satisfy 0 <= min_rate <= max_rate.
-        frequency: Sinusoid frequency (Hz).
-        phase: Optional phase offset (radians).
+        rate_f: Rate function that takes time t and returns rate at that time.
+        max_rate: Maximum rate value (required for thinning algorithm).
         rng: Optional numpy Generator for reproducibility.
 
     Returns:
         np.ndarray of event times (seconds) sorted in ascending order.
     """
-    if max_rate <= 0:
-        raise ValueError("max_rate must be positive.")
-    if min_rate < 0 or min_rate > max_rate:
-        raise ValueError("min_rate must be in [0, max_rate].")
-    if frequency <= 0:
-        raise ValueError("frequency must be positive.")
     if rng is None:
         rng = np.random.default_rng()
 
-    def lambda_t(t: float) -> float:
-        # Sinusoid scaled to [min_rate, max_rate]
-        return min_rate + (max_rate - min_rate) * 0.5 * (1 + math.sin(2 * math.pi * frequency * t + phase))
-
-    lam_max = max_rate
     t = 0.0
     events = []
     while t < duration:
-        t += rng.exponential(1.0 / lam_max)
+        t += rng.exponential(1.0 / max_rate)
         if t >= duration:
             break
-        if rng.random() < lambda_t(t) / lam_max:
+        if rng.random() < rate_f(t) / max_rate:
             events.append(t)
     return np.array(events, dtype=float)

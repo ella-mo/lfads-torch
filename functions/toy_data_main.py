@@ -2,7 +2,6 @@
 import numpy as np 
 import h5py
 import sys
-import math
 from pathlib import Path
 import yaml
 import os
@@ -14,7 +13,7 @@ try:
     # Try relative imports first (when imported as module)
     from .make_configs import create_datamodule_config, create_model_config
     from .bin_data import bin_make_train_val, readable_float
-    from .process_data import inhomogeneous_poisson_sinusoidal
+    from .process_data import lambda_t, inhomogeneous_poisson_sinusoidal
     from .making_names import make_dataset_str
 except ImportError:
     # If relative imports fail, add parent directory to path and use absolute imports
@@ -25,7 +24,7 @@ except ImportError:
     if str(_project_root) not in sys.path:
         sys.path.insert(0, str(_project_root))
     from data_functions import stitch_data
-    from process_data import inhomogeneous_poisson_sinusoidal
+    from process_data import lambda_t, inhomogeneous_poisson_sinusoidal
     from making_names import make_dataset_str
     
 
@@ -49,24 +48,24 @@ if __name__ == '__main__':
 
     n_channels = int(config['make_toy_data']['num_channels'])
     DEBUG = config['make_toy_data']['DEBUG']
-    # YAML automatically parses lists, so we can use it directly
     sample_sizes = config['make_toy_data']['sample_sizes']
     bin_size = config['make_toy_data']['bin_size']
-    # Convert sample size differences to overlap in seconds
     overlaps = [(sample_sizes[i]-sample_sizes[0]) * bin_size for i in range(len(sample_sizes))]
-    # Parameters
     recording_duration = float(config['make_toy_data']['recording_duration'])
     max_rate = float(config['make_toy_data']['max_rate'])
     min_rate = float(config['make_toy_data']['min_rate'])
-    frequency = float(config['make_toy_data']['frequency'])
+    period = float(config['make_toy_data']['period'])
     phase = float(config['make_toy_data'].get('phase', 0))
+    start_sin_time = float(config['make_toy_data']['start_sin_time'])
+    end_sin_time = float(config['make_toy_data']['end_sin_time'])
 
-    rate_str = f"toy_max{readable_float(max_rate)}_min{readable_float(min_rate)}_freq{readable_float(frequency)}"
+    rate_str = f"toy_max{readable_float(max_rate)}_min{readable_float(min_rate)}_per{readable_float(period)}"
     
     # Simulate the process
     spike_times_per_channel = []
+    rate_f = lambda_t(max_rate, min_rate, period, start_sin_time, end_sin_time)
     for ch in range(n_channels):
-        spike_times = inhomogeneous_poisson_sinusoidal(recording_duration, max_rate, min_rate, frequency)
+        spike_times = inhomogeneous_poisson_sinusoidal(recording_duration, rate_f, max_rate)
         spike_times_per_channel.append(spike_times)
         print(f'Channel {ch}: {len(spike_times)} spikes')
 
@@ -76,10 +75,9 @@ if __name__ == '__main__':
         for ch in range(n_channels):
             spike_times = spike_times_per_channel[ch]
             times = np.linspace(0, recording_duration, 1000)
-            rates = min_rate + (max_rate - min_rate) * 0.5 * (1 + np.sin(2 * np.pi * frequency * times + phase))
 
             plt.figure(figsize=(10, 5))
-            plt.plot(times, rates, label='$\\lambda(t)$', color='blue')
+            plt.plot(times, rate_f(times), label='$\\lambda(t)$', color='blue')
             plt.scatter(spike_times, np.zeros_like(spike_times), color='red', marker='|', s=100, label=f'Spikes ({len(spike_times)} total)')
             plt.title('Inhomogeneous Poisson Process with Sinusoidal Intensity')
             plt.xlabel('Time (s)')

@@ -141,3 +141,6 @@ dmypy.json
 *.npy
 functions/test_spike_detection.py
 *.png
+files/
+runs/
+bin_files.csv

@@ -4,8 +4,8 @@
 #SBATCH --error=logs/session_test_%j.err
 #SBATCH -p gpu
 #SBATCH --gres=gpu:1
-#SBATCH --time=00:10:00
-#SBATCH --mem=25G
+#SBATCH --time=06:00:00
+#SBATCH --mem=10G
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=ella_mohanram@brown.edu
 
@@ -50,12 +50,14 @@ python -m functions.main -b bin_files.csv -l "$LFADS_DIR" -c "$CONFIG_PATH"
 
 # grab the dataset IDs the Python step would have generated
 mapfile -t DATASETS < <(
-  python - <<'PY'
+  CONFIG_PATH="$CONFIG_PATH" python - <<'PY'
+import os
 import pandas as pd
 from pathlib import Path
 from functions.making_names import make_dataset_str
 import yaml
-with open("$CONFIG_PATH", "r") as f:
+config_path = os.environ['CONFIG_PATH']
+with open(config_path, "r") as f:
     config = yaml.safe_load(f)
 paths = pd.read_csv("bin_files.csv")["path"]
 for p in paths:

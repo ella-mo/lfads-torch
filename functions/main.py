@@ -54,20 +54,22 @@ if __name__ == '__main__':
         #Prep output paths
         output_dir = Path.cwd()
         dataset_str = make_dataset_str(file, bin_size, sample_len, overlap)
-        os.makedirs(f'{output_dir}/other_files', exist_ok=True)
-        os.makedirs(f'{output_dir}/other_files/{dataset_str}', exist_ok=True)
+        os.makedirs(f'{output_dir}/files', exist_ok=True)
+        os.makedirs(f'{output_dir}/files/{dataset_str}', exist_ok=True)
 
-        train_indices = f"{output_dir}/other_files/{dataset_str}/train_indices_{dataset_str}.npy"
-        valid_indices = f"{output_dir}/other_files/{dataset_str}/valid_indices_{dataset_str}.npy"
-        raw_voltage_file = f"{output_dir}/other_files/{dataset_str}/{dataset_str}_raw_voltage.mat"
+        train_indices = f"{output_dir}/files/{dataset_str}/train_indices_{dataset_str}.npy"
+        valid_indices = f"{output_dir}/files/{dataset_str}/valid_indices_{dataset_str}.npy"
+        raw_voltage_file = f"{output_dir}/files/{dataset_str}/{dataset_str}_raw_voltage.mat"
         data_file = f'{args.lfads_dir}/datasets/{dataset_str}.h5'
 
         # Load bin file
-        data = np.memmap(file, dtype='float32', mode='r')
-        data = data.reshape((num_channels, len(data)//num_channels), order='F').T #shape (num_samples, num_channels)
+        file_stat = os.stat(file)
+        num_elements = file_stat.st_size // 4  # float32 has 4 bytes
+        num_samples = num_elements // num_channels
+        data = np.memmap(file, dtype='float32', mode='r', shape=(num_samples, num_channels))       #shape (num_samples, num_channels)
+        print(f'data shape: {data.shape}')
         savemat(raw_voltage_file, {'data': data})
         print('Saved raw data')
-        print(f'data shape: {data.shape}')
 
         # Extract spike times for all channels
         spike_times_per_channel = []
@@ -103,6 +105,6 @@ if __name__ == '__main__':
             f.create_dataset("valid_recon_data", data=valid_data)
         
         # Get batch_size from config or use default
-        batch_size = int(config['make_data'].get('batch_size', 32))
+        batch_size = int(config['make_data'].get('batch_size', valid_data.shape[0]))
         create_datamodule_config(args.lfads_dir, batch_size, dataset_str)
-        create_model_config(args.lfads_dir, dataset_str, train_data)
+        create_model_config(args.lfads_dir, train_data, dataset_str)
